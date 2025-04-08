@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -13,6 +14,7 @@ namespace UdpClientExample
     public partial class MainWindow : Window
     {
         private UdpClient udpClient;
+        private Thread receiveThread;
         private bool isRunning = false;
         private const int receivePort = 9000;
 
@@ -21,7 +23,7 @@ namespace UdpClientExample
             InitializeComponent();
         }
 
-        private async void DataReceive_Click(object sender, RoutedEventArgs e)
+        private void DataReceive_Click(object sender, RoutedEventArgs e)
         {
             if (isRunning)
             {
@@ -30,39 +32,66 @@ namespace UdpClientExample
             }
 
             isRunning = true;
-            udpClient = new UdpClient(receivePort);
+            isRunning = true;
             lstMessages.Items.Insert(0, $"[수신 시작] 포트 {receivePort}");
 
-            await Task.Run(async () =>
+            receiveThread = new Thread(RecvCallBack);
+            receiveThread.IsBackground = true;
+            receiveThread.Start();
+        }
+        private void RecvCallBack()
+        {
+            try
             {
+                udpClient = new UdpClient(receivePort);
+
                 while (isRunning)
                 {
-                    try
-                    {
-                        var result = await udpClient.ReceiveAsync();
-                        string msg = Encoding.UTF8.GetString(result.Buffer);
+                    IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
+                    byte[] buffer = udpClient.Receive(ref remoteEP); // blocking call
 
-                        Dispatcher.Invoke(() =>
-                        {
-                            lstMessages.Items.Insert(0, $"[수신] {msg}");
-                        });
-                    }
-                    catch (Exception ex)
+                    string message = Encoding.UTF8.GetString(buffer);
+                    Dispatcher.Invoke(() =>
                     {
-                        Dispatcher.Invoke(() =>
-                        {
-                            lstMessages.Items.Insert(0, $"[에러] {ex.Message}");
-                        });
-                    }
+                        lstMessages.Items.Insert(0, $"[수신] {message}");
+                    });
                 }
-            });
+            }
+            catch (SocketException se)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    lstMessages.Items.Insert(0, $"[소켓 예외] {se.Message}");
+                });
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    lstMessages.Items.Insert(0, $"[예외] {ex.Message}");
+                });
+            }
+            finally
+            {
+                udpClient?.Close();
+            }
         }
 
         protected override void OnClosed(EventArgs e)
         {
-            isRunning = false;
-            udpClient?.Close();
             base.OnClosed(e);
+
+            isRunning = false;
+
+            if (udpClient != null)
+            {
+                udpClient.Close(); // force unblocking
+            }
+
+            if (receiveThread != null && receiveThread.IsAlive)
+            {
+                receiveThread.Join(1000); // wait 1 sec for clean exit
+            }
         }
 
     }
