@@ -1,0 +1,24 @@
+
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Visual Studio cache files
+.vs/
+
+# Temporary files
+*.log
+*.tmp
+*.bak
+
+# Others
+TestResults/
+*.Cache
+_ReSharper*/
+*.ncrunch*
+*.localhistory/
+.idea/
