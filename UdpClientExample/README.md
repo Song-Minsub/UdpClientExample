@@ -5,6 +5,13 @@ UdpClient와 Task를 이용하여 비동기적으로 데이터를 수신하고,
 ListBox에 수신 메시지를 출력합니다.
 
 ---
+## 🔄 업데이트 내역
+
+- UDP 수신 로직을 async/await → Thread 기반으로 개선
+- UI 업데이트는 Dispatcher.Invoke 사용
+- 종료 시 안전하게 스레드 종료 (`Thread.Join`)
+
+---
 
 ## ✅ 주요 기능
 
